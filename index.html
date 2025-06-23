@@ -103,10 +103,10 @@
             </div>
             <section id="results">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-gray-700">Vagas Recentes</h2>
+                    <h2 class="text-xl font-semibold text-gray-700" id="results-title">Vagas Recentes</h2>
                     <span id="result-count" class="text-sm text-gray-500"></span>
                 </div>
-                <div id="vacancies-list" class="space-y-4"></div>
+                <div id="vacancies-list" class="space-y-6"></div>
             </section>
         </main>
     </div>
@@ -136,6 +136,7 @@
     const messageEl = document.getElementById('message');
     const loadingEl = document.getElementById('loading');
     const resultsEl = document.getElementById('results');
+    const resultsTitle = document.getElementById('results-title');
     const resultCountEl = document.getElementById('result-count');
     const vacanciesList = document.getElementById('vacancies-list');
 
@@ -502,9 +503,9 @@
         }
     }
 
-    // Render vacancies
+    // Render vacancies with improved heading structure
     function renderVacancies(vacancies, query = '', title = 'Vagas') {
-        resultsEl.querySelector('h2').textContent = title;
+        resultsTitle.textContent = title;
         document.querySelectorAll('script[type="application/ld+json"]').forEach(el => el.remove());
         vacanciesList.innerHTML = '';
         
@@ -534,7 +535,8 @@
             
             card.innerHTML = `
                 <div class="flex items-start">
-                    <h3 class="font-bold text-lg flex-1">${highlightedTitle}</h3>
+                    <!-- HEADING 2 FOR JOB TITLE -->
+                    <h2 class="font-bold text-lg flex-1">${highlightedTitle}</h2>
                     ${matchBadge}
                     ${pcdBadge}
                 </div>
