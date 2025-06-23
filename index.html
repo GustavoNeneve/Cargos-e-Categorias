@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Busca de Vagas RHBrasil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .description-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .description-content.show {
+            max-height: 500px;
+            transition: max-height 0.5s ease-in;
+        }
+        .highlight {
+            background-color: yellow;
+            font-weight: bold;
+        }
+        .match-type {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+        .name-match {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .desc-match {
+            background-color: #2196F3;
+            color: white;
+        }
+        .pcd-badge {
+            background-color: #9C27B0;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+<div class="min-h-screen p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        
+        <header class="bg-blue-600 text-white p-6 sm:p-8 rounded-t-xl">
+            <h1 class="text-2xl font-bold text-center">Busca de Vagas RHBrasil</h1>
+            <p class="text-center opacity-90 mt-2">
+                Encontre a vaga ideal para você
+            </p>
+        </header>
+
+        <main class="p-6 sm:p-8">
+            <!-- Search Section -->
+            <section class="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Filtrar Vagas</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <!-- Keyword Search -->
+                    <div class="md:col-span-2">
+                        <label for="query" class="block text-sm font-medium text-gray-700 mb-1">Palavras-chave (opcional):</label>
+                        <input type="text" id="query" placeholder="Ex: Almoxarife, 123456 ou 'Experiência com estoque'" 
+                               class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <!-- State Filter -->
+                    <div>
+                        <label for="estado" class="block text-sm font-medium text-gray-700 mb-1">Estado:</label>
+                        <select id="estado" class="w-full p-2 border border-gray-300 rounded-md">
+                            <option value="">Todos os estados</option>
+                        </select>
+                    </div>
+                    <!-- City Filter -->
+                    <div>
+                        <label for="cidade" class="block text-sm font-medium text-gray-700 mb-1">Cidade:</label>
+                        <select id="cidade" class="w-full p-2 border border-gray-300 rounded-md">
+                            <option value="">Todas as cidades</option>
+                        </select>
+                    </div>
+                    <!-- PCD Filter -->
+                    <div class="flex items-center">
+                        <input type="checkbox" id="vagas_pcd" class="mr-2">
+                        <label for="vagas_pcd" class="text-sm font-medium text-gray-700">Apenas vagas PCD</label>
+                    </div>
+                </div>
+                <button id="search-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700">
+                    Buscar Vagas
+                </button>
+            </section>
+            
+            <!-- Results Section -->
+            <div id="message" class="hidden p-4 mb-4 rounded-md text-center"></div>
+            <div id="loading" class="hidden text-center py-4">
+                <i class="fas fa-spinner fa-spin text-blue-500 mr-2"></i>
+                <span>Buscando vagas...</span>
+            </div>
+            <section id="results">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Vagas Recentes</h2>
+                    <span id="result-count" class="text-sm text-gray-500"></span>
+                </div>
+                <div id="vacancies-list" class="space-y-4"></div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<script>
+    // State
+    let state = {
+        vagas: [],
+        cities: [],
+        loading: false,
+        descriptionCache: {},
+        allDescriptions: {},
+        pcdFromDescription: {}
+    };
+
+    // API Endpoints
+    const VAGAS_API = 'https://www.rhbrasil.com.br/uploads/portal_candidato/vagas-publicas.json';
+    const DESCRICAO_API = (codigo) => `https://www.rhbrasil.com.br/portaldocandidato/view/ver-vagas.php?cod=${codigo}`;
+
+    // DOM Elements
+    const searchBtn = document.getElementById('search-btn');
+    const queryInput = document.getElementById('query');
+    const estadoSelect = document.getElementById('estado');
+    const cidadeSelect = document.getElementById('cidade');
+    const pcdCheckbox = document.getElementById('vagas_pcd');
+    const messageEl = document.getElementById('message');
+    const loadingEl = document.getElementById('loading');
+    const resultsEl = document.getElementById('results');
+    const resultCountEl = document.getElementById('result-count');
+    const vacanciesList = document.getElementById('vacancies-list');
+
+    // Initialize
+    async function init() {
+        try {
+            const response = await fetch(VAGAS_API);
+            if (!response.ok) throw new Error('Falha ao carregar vagas');
+            
+            state.vagas = await response.json();
+            loadStates();
+            
+            searchBtn.disabled = false;
+            showRecentVacancies();
+            
+        } catch (error) {
+            showMessage(`Erro: ${error.message}`, 'error');
+            console.error(error);
+        }
+    }
+
+    // Show 10 most recent vacancies
+    async function showRecentVacancies() {
+        try {
+            const allVacancies = [];
+            
+            state.vagas.forEach(unidade => {
+                unidade.LOCAIS_ATUACAO?.forEach(local => {
+                    local.VAGAS?.forEach(vaga => {
+                        allVacancies.push({
+                            ...vaga,
+                            UNIDADE: unidade.UNIDADE_RHBRASIL,
+                            LOCAL: local.LOCAL_ATUACAO
+                        });
+                    });
+                });
+            });
+            
+            allVacancies.sort((a, b) => b.CODIGO_VAGA - a.CODIGO_VAGA);
+            const recentVacancies = allVacancies.slice(0, 10);
+            
+            renderVacancies(recentVacancies, '', 'Vagas Recentes');
+            resultCountEl.textContent = `10 vagas mais recentes`;
+            
+        } catch (error) {
+            showMessage(`Erro ao carregar vagas recentes: ${error.message}`, 'error');
+            console.error(error);
+        }
+    }
+
+    // Load states
+    function loadStates() {
+        const states = new Set();
+        
+        state.vagas.forEach(unidade => {
+            unidade.LOCAIS_ATUACAO?.forEach(local => {
+                const [_, sigla] = local.LOCAL_ATUACAO.split('/');
+                if (sigla) states.add(sigla.trim());
+            });
+        });
+        
+        estadoSelect.innerHTML = '<option value="">Todos os estados</option>';
+        [...states].sort().forEach(state => {
+            estadoSelect.add(new Option(state, state));
+        });
+    }
+
+    // Update cities
+    function updateCities() {
+        const selectedState = estadoSelect.value;
+        const cities = new Set();
+        
+        state.vagas.forEach(unidade => {
+            unidade.LOCAIS_ATUACAO?.forEach(local => {
+                const [cidade, sigla] = local.LOCAL_ATUACAO.split('/');
+                if ((!selectedState || sigla?.trim() === selectedState) && cidade) {
+                    cities.add(cidade.trim());
+                }
+            });
+        });
+        
+        cidadeSelect.innerHTML = '<option value="">Todas as cidades</option>';
+        [...cities].sort().forEach(city => {
+            cidadeSelect.add(new Option(city, city));
+        });
+    }
+
+    // Show message
+    function showMessage(text, type = 'info') {
+        messageEl.textContent = text;
+        messageEl.className = 'p-4 mb-4 rounded-md text-center';
+        
+        const colors = {
+            success: 'bg-green-100 text-green-800',
+            error: 'bg-red-100 text-red-800',
+            info: 'bg-blue-100 text-blue-800'
+        };
+        
+        messageEl.classList.add(...colors[type].split(' '));
+        messageEl.classList.remove('hidden');
+    }
+
+    // Highlight text
+    function highlightText(text, query) {
+        if (!query) return text;
+        
+        const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        if (words.length === 0) return text;
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = text;
+        
+        const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        let node;
+        
+        while (node = walker.nextNode()) {
+            nodes.push(node);
+        }
+        
+        nodes.forEach(node => {
+            const parent = node.parentNode;
+            if (parent.nodeName === 'SCRIPT' || parent.nodeName === 'STYLE') return;
+            
+            let textContent = node.nodeValue;
+            words.forEach(word => {
+                const regex = new RegExp(word, 'gi');
+                textContent = textContent.replace(regex, match => `<span class="highlight">${match}</span>`);
+            });
+            
+            const newSpan = document.createElement('span');
+            newSpan.innerHTML = textContent;
+            parent.replaceChild(newSpan, node);
+        });
+        
+        return tempDiv.innerHTML;
+    }
+
+    // Fetch job description
+    async function fetchJobDescription(codigo) {
+        if (state.descriptionCache[codigo]) {
+            return state.descriptionCache[codigo];
+        }
+
+        try {
+            const response = await fetch(DESCRICAO_API(codigo));
+            if (!response.ok) throw new Error('Falha ao buscar descrição');
+            
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const descriptionElement = doc.querySelector('p.description.expand');
+            
+            if (!descriptionElement) {
+                throw new Error('Descrição não encontrada na página');
+            }
+            
+            const description = descriptionElement.innerHTML;
+            
+            state.descriptionCache[codigo] = description;
+            state.allDescriptions[codigo] = description.toLowerCase();
+            state.pcdFromDescription[codigo] = description.toLowerCase().includes('pcd') || 
+                                             description.toLowerCase().includes('pessoa com deficiência');
+            
+            return description;
+        } catch (error) {
+            console.error(`Erro ao buscar descrição da vaga ${codigo}:`, error);
+            return `<p class="text-red-500">Não foi possível carregar a descrição desta vaga: ${error.message}</p>`;
+        }
+    }
+
+    // Pre-fetch descriptions
+    async function preFetchDescriptions(vagas) {
+        const promises = vagas.map(async vaga => {
+            if (!state.allDescriptions[vaga.CODIGO_VAGA]) {
+                try {
+                    await fetchJobDescription(vaga.CODIGO_VAGA);
+                } catch (error) {
+                    console.error(`Erro ao pré-buscar descrição para vaga ${vaga.CODIGO_VAGA}:`, error);
+                }
+            }
+        });
+        
+        return Promise.all(promises);
+    }
+
+    // Toggle description
+    async function toggleDescription(button, codigo, query = '') {
+        const card = button.closest('.vacancy-card');
+        const descriptionContainer = card.querySelector('.description-container');
+        const descriptionContent = card.querySelector('.description-content');
+        
+        if (descriptionContainer.classList.contains('hidden')) {
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Carregando...';
+            button.disabled = true;
+            
+            const description = await fetchJobDescription(codigo);
+            const highlightedDescription = query ? highlightText(description, query) : description;
+            
+            descriptionContent.innerHTML = highlightedDescription;
+            descriptionContainer.classList.remove('hidden');
+            descriptionContent.classList.add('show');
+            button.innerHTML = '<i class="fas fa-eye-slash"></i> Ocultar';
+            button.disabled = false;
+        } else {
+            descriptionContent.classList.remove('show');
+            setTimeout(() => {
+                descriptionContainer.classList.add('hidden');
+                button.innerHTML = '<i class="fas fa-eye"></i> Ver Descrição';
+            }, 300);
+        }
+    }
+
+    // Generate JSON-LD
+    function generateJobPostingJsonLd(vaga) {
+        const [cidade, estado] = vaga.LOCAL.split('/');
+        const isPcd = vaga.NOME_VAGA.toLowerCase().includes('pcd') || 
+                     (state.pcdFromDescription[vaga.CODIGO_VAGA] === true);
+        
+        return {
+            "@context": "https://schema.org/",
+            "@type": "JobPosting",
+            "title": vaga.NOME_VAGA,
+            "description": state.descriptionCache[vaga.CODIGO_VAGA] || "Descrição não disponível",
+            "identifier": {
+                "@type": "PropertyValue",
+                "name": "RHBrasil",
+                "value": vaga.CODIGO_VAGA.toString()
+            },
+            "datePosted": new Date().toISOString(),
+            "employmentType": "FULL_TIME",
+            "hiringOrganization": {
+                "@type": "Organization",
+                "name": vaga.UNIDADE || "RHBrasil",
+                "sameAs": "https://www.rhbrasil.com.br"
+            },
+            "jobLocation": {
+                "@type": "Place",
+                "address": {
+                    "@type": "PostalAddress",
+                    "addressLocality": cidade.trim(),
+                    "addressRegion": estado.trim(),
+                    "addressCountry": "BR"
+                }
+            },
+            "specialCommitments": isPcd ? "HiringDisabled" : undefined
+        };
+    }
+
+    // Search vacancies
+    async function searchVacancies() {
+        const query = queryInput.value.trim();
+        const estado = estadoSelect.value;
+        const cidade = cidadeSelect.value;
+        const pcdOnly = pcdCheckbox.checked;
+        
+        try {
+            state.loading = true;
+            searchBtn.disabled = true;
+            messageEl.classList.add('hidden');
+            vacanciesList.innerHTML = '';
+            loadingEl.classList.remove('hidden');
+            
+            let results = [];
+            const normQuery = query.toLowerCase();
+            const queryWords = normQuery.split(/\s+/).filter(w => w.length > 2);
+            
+            // Filter by location
+            state.vagas.forEach(unidade => {
+                unidade.LOCAIS_ATUACAO?.forEach(local => {
+                    const [localCidade, localEstado] = local.LOCAL_ATUACAO.split('/');
+                    
+                    const estadoMatch = !estado || localEstado?.trim() === estado;
+                    const cidadeMatch = !cidade || localCidade?.trim() === cidade;
+                    
+                    if (estadoMatch && cidadeMatch) {
+                        local.VAGAS?.forEach(vaga => {
+                            results.push({
+                                ...vaga,
+                                UNIDADE: unidade.UNIDADE_RHBRASIL,
+                                LOCAL: local.LOCAL_ATUACAO
+                            });
+                        });
+                    }
+                });
+            });
+            
+            // Pre-fetch descriptions if needed
+            if (query || pcdOnly) {
+                loadingEl.innerHTML = '<i class="fas fa-spinner fa-spin text-blue-500 mr-2"></i><span>Buscando descrições...</span>';
+                await preFetchDescriptions(results);
+            }
+            
+            // Filter results
+            let filteredResults = [];
+            
+            results.forEach(vaga => {
+                // Check PCD in name or description
+                const pcdMatch = !pcdOnly || 
+                               vaga.NOME_VAGA.toLowerCase().includes('pcd') ||
+                               (state.pcdFromDescription[vaga.CODIGO_VAGA] === true);
+                
+                if (!pcdMatch) return;
+                
+                // If no query, include all filtered by PCD
+                if (!query) {
+                    filteredResults.push({...vaga, matchType: 'all'});
+                    return;
+                }
+                
+                // Check name/code match
+                const nomeMatch = vaga.NOME_VAGA.toLowerCase().includes(normQuery) || 
+                                vaga.CODIGO_VAGA.toString().includes(normQuery);
+                
+                // Check description match
+                let descMatch = false;
+                if (state.allDescriptions[vaga.CODIGO_VAGA]) {
+                    if (queryWords.length > 0) {
+                        descMatch = queryWords.every(word => 
+                            state.allDescriptions[vaga.CODIGO_VAGA].includes(word)
+                        );
+                    } else {
+                        descMatch = state.allDescriptions[vaga.CODIGO_VAGA].includes(normQuery);
+                    }
+                }
+                
+                if (nomeMatch) {
+                    filteredResults.push({...vaga, matchType: 'name'});
+                } else if (descMatch) {
+                    filteredResults.push({...vaga, matchType: 'desc'});
+                }
+            });
+            
+            // Sort results
+            filteredResults.sort((a, b) => {
+                const typeOrder = {name: 1, desc: 2, all: 3};
+                const aType = typeOrder[a.matchType] || 3;
+                const bType = typeOrder[b.matchType] || 3;
+                
+                if (aType !== bType) return aType - bType;
+                
+                return b.CODIGO_VAGA - a.CODIGO_VAGA;
+            });
+            
+            // Display results
+            if (filteredResults.length === 0) {
+                showMessage('Nenhuma vaga encontrada com os filtros selecionados.', 'info');
+                loadingEl.classList.add('hidden');
+                return;
+            }
+            
+            renderVacancies(filteredResults, query, 
+                          query ? 'Resultados da Busca' : 'Vagas Filtradas');
+            resultCountEl.textContent = `${filteredResults.length} vagas encontradas`;
+            loadingEl.classList.add('hidden');
+            
+        } catch (error) {
+            showMessage(`Erro na busca: ${error.message}`, 'error');
+            console.error(error);
+            loadingEl.classList.add('hidden');
+        } finally {
+            state.loading = false;
+            searchBtn.disabled = false;
+        }
+    }
+
+    // Render vacancies
+    function renderVacancies(vacancies, query = '', title = 'Vagas') {
+        resultsEl.querySelector('h2').textContent = title;
+        document.querySelectorAll('script[type="application/ld+json"]').forEach(el => el.remove());
+        vacanciesList.innerHTML = '';
+        
+        vacancies.forEach((vaga, index) => {
+            const card = document.createElement('div');
+            card.className = 'p-4 border border-gray-200 rounded-lg bg-blue-50 vacancy-card';
+            
+            // Highlight matches
+            let highlightedTitle = vaga.NOME_VAGA;
+            if (query) {
+                const regex = new RegExp(query, 'gi');
+                highlightedTitle = vaga.NOME_VAGA.replace(regex, match => `<span class="highlight">${match}</span>`);
+            }
+            
+            // Add match type badge
+            let matchBadge = '';
+            if (vaga.matchType && vaga.matchType !== 'all') {
+                const badgeClass = vaga.matchType === 'name' ? 'name-match' : 'desc-match';
+                const badgeText = vaga.matchType === 'name' ? 'Nome' : 'Descrição';
+                matchBadge = `<span class="match-type ${badgeClass}">${badgeText}</span>`;
+            }
+            
+            // Add PCD badge
+            const isPcd = vaga.NOME_VAGA.toLowerCase().includes('pcd') || 
+                         (state.pcdFromDescription[vaga.CODIGO_VAGA] === true);
+            const pcdBadge = isPcd ? '<span class="match-type pcd-badge">PCD</span>' : '';
+            
+            card.innerHTML = `
+                <div class="flex items-start">
+                    <h3 class="font-bold text-lg flex-1">${highlightedTitle}</h3>
+                    ${matchBadge}
+                    ${pcdBadge}
+                </div>
+                <p class="text-sm text-gray-600">Código: ${vaga.CODIGO_VAGA}</p>
+                <p class="text-sm">Local: ${vaga.LOCAL}</p>
+                <p class="text-sm">Unidade: ${vaga.UNIDADE}</p>
+                
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <a href="https://www.rhbrasil.com.br/portaldocandidato/view/ver-vagas.php?cod=${vaga.CODIGO_VAGA}" 
+                       target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                        <i class="fas fa-external-link-alt mr-1"></i> Ver vaga completa
+                    </a>
+                    <button onclick="toggleDescription(this, '${vaga.CODIGO_VAGA}', '${query.replace(/'/g, "\\'")}')" 
+                            class="px-3 py-1 bg-gray-200 text-gray-800 rounded-md text-sm hover:bg-gray-300">
+                        <i class="fas fa-eye mr-1"></i> Ver Descrição
+                    </button>
+                </div>
+                
+                <div class="description-container hidden mt-3">
+                    <div class="description-content p-3 bg-white rounded border border-gray-300 overflow-auto"></div>
+                </div>
+            `;
+            
+            vacanciesList.appendChild(card);
+            
+            // Add JSON-LD
+            const jsonLd = document.createElement('script');
+            jsonLd.type = 'application/ld+json';
+            jsonLd.text = JSON.stringify(generateJobPostingJsonLd(vaga));
+            document.body.appendChild(jsonLd);
+        });
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', init);
+    searchBtn.addEventListener('click', searchVacancies);
+    estadoSelect.addEventListener('change', updateCities);
+    queryInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') searchVacancies();
+    });
+
+    // Make toggleDescription available globally
+    window.toggleDescription = toggleDescription;
+</script>
+</body>
+</html>
