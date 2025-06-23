@@ -7,7 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
@@ -45,6 +48,14 @@
             background-color: #9C27B0;
             color: white;
         }
+        .vacancy-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .vacancy-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -52,9 +63,9 @@
 <div class="min-h-screen p-4 sm:p-8">
     <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
         
-        <header class="bg-blue-600 text-white p-6 sm:p-8 rounded-t-xl">
-            <h1 class="text-2xl font-bold text-center">Busca de Vagas RHBrasil</h1>
-            <p class="text-center opacity-90 mt-2">
+        <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 sm:p-8 rounded-t-xl">
+            <h1 class="text-3xl font-bold text-center">Busca de Vagas RHBrasil</h1>
+            <p class="text-center opacity-90 mt-3 text-lg">
                 Encontre a vaga ideal para você
             </p>
         </header>
@@ -68,29 +79,29 @@
                     <div class="md:col-span-2">
                         <label for="query" class="block text-sm font-medium text-gray-700 mb-1">Palavras-chave (opcional):</label>
                         <input type="text" id="query" placeholder="Ex: Almoxarife, 123456 ou 'Experiência com estoque'" 
-                               class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400">
+                               class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-transparent">
                     </div>
                     <!-- State Filter -->
                     <div>
                         <label for="estado" class="block text-sm font-medium text-gray-700 mb-1">Estado:</label>
-                        <select id="estado" class="w-full p-2 border border-gray-300 rounded-md">
+                        <select id="estado" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400">
                             <option value="">Todos os estados</option>
                         </select>
                     </div>
                     <!-- City Filter -->
                     <div>
                         <label for="cidade" class="block text-sm font-medium text-gray-700 mb-1">Cidade:</label>
-                        <select id="cidade" class="w-full p-2 border border-gray-300 rounded-md">
+                        <select id="cidade" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400">
                             <option value="">Todas as cidades</option>
                         </select>
                     </div>
                     <!-- PCD Filter -->
                     <div class="flex items-center">
-                        <input type="checkbox" id="vagas_pcd" class="mr-2">
+                        <input type="checkbox" id="vagas_pcd" class="mr-2 h-5 w-5 text-blue-600">
                         <label for="vagas_pcd" class="text-sm font-medium text-gray-700">Apenas vagas PCD</label>
                     </div>
                 </div>
-                <button id="search-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700">
+                <button id="search-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-3 px-4 rounded-md font-medium hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 shadow-md">
                     Buscar Vagas
                 </button>
             </section>
@@ -98,17 +109,22 @@
             <!-- Results Section -->
             <div id="message" class="hidden p-4 mb-4 rounded-md text-center"></div>
             <div id="loading" class="hidden text-center py-4">
-                <i class="fas fa-spinner fa-spin text-blue-500 mr-2"></i>
-                <span>Buscando vagas...</span>
+                <i class="fas fa-spinner fa-spin text-blue-500 mr-2 text-2xl"></i>
+                <span class="text-lg">Buscando vagas...</span>
             </div>
             <section id="results">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-gray-700" id="results-title">Vagas Recentes</h2>
-                    <span id="result-count" class="text-sm text-gray-500"></span>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800" id="results-title">Vagas Recentes</h2>
+                    <span id="result-count" class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full"></span>
                 </div>
                 <div id="vacancies-list" class="space-y-6"></div>
             </section>
         </main>
+        
+        <footer class="bg-gray-100 p-6 text-center text-gray-600 text-sm border-t">
+            <p>© 2023 RHBrasil - Todos os direitos reservados</p>
+            <p class="mt-2">Sistema de busca de vagas desenvolvido com ❤️</p>
+        </footer>
     </div>
 </div>
 
@@ -179,7 +195,7 @@
             const recentVacancies = allVacancies.slice(0, 10);
             
             renderVacancies(recentVacancies, '', 'Vagas Recentes');
-            resultCountEl.textContent = `10 vagas mais recentes`;
+            resultCountEl.textContent = `10 vagas encontradas`;
             
         } catch (error) {
             showMessage(`Erro ao carregar vagas recentes: ${error.message}`, 'error');
@@ -230,9 +246,9 @@
         messageEl.className = 'p-4 mb-4 rounded-md text-center';
         
         const colors = {
-            success: 'bg-green-100 text-green-800',
-            error: 'bg-red-100 text-red-800',
-            info: 'bg-blue-100 text-blue-800'
+            success: 'bg-green-100 text-green-800 border border-green-200',
+            error: 'bg-red-100 text-red-800 border border-red-200',
+            info: 'bg-blue-100 text-blue-800 border border-blue-200'
         };
         
         messageEl.classList.add(...colors[type].split(' '));
@@ -339,13 +355,13 @@
             descriptionContent.innerHTML = highlightedDescription;
             descriptionContainer.classList.remove('hidden');
             descriptionContent.classList.add('show');
-            button.innerHTML = '<i class="fas fa-eye-slash"></i> Ocultar';
+            button.innerHTML = '<i class="fas fa-eye-slash mr-1"></i> Ocultar';
             button.disabled = false;
         } else {
             descriptionContent.classList.remove('show');
             setTimeout(() => {
                 descriptionContainer.classList.add('hidden');
-                button.innerHTML = '<i class="fas fa-eye"></i> Ver Descrição';
+                button.innerHTML = '<i class="fas fa-eye mr-1"></i> Ver Descrição';
             }, 300);
         }
     }
@@ -511,7 +527,7 @@
         
         vacancies.forEach((vaga, index) => {
             const card = document.createElement('div');
-            card.className = 'p-4 border border-gray-200 rounded-lg bg-blue-50 vacancy-card';
+            card.className = 'p-6 border border-gray-200 rounded-lg bg-white vacancy-card';
             
             // Highlight matches
             let highlightedTitle = vaga.NOME_VAGA;
@@ -534,29 +550,43 @@
             const pcdBadge = isPcd ? '<span class="match-type pcd-badge">PCD</span>' : '';
             
             card.innerHTML = `
-                <div class="flex items-start">
-                    <!-- CORREÇÃO: Heading 2 para nome do cargo -->
-                    <h2 class="font-bold text-lg flex-1">${highlightedTitle}</h2>
-                    ${matchBadge}
-                    ${pcdBadge}
+                <div class="flex flex-wrap items-start mb-3">
+                    <!-- Heading 3 para título da vaga com destaque visual -->
+                    <h3 class="text-xl font-bold text-gray-800 flex-1 mb-2">${highlightedTitle}</h3>
+                    <div class="flex space-x-2">
+                        ${matchBadge}
+                        ${pcdBadge}
+                    </div>
                 </div>
-                <p class="text-sm text-gray-600">Código: ${vaga.CODIGO_VAGA}</p>
-                <p class="text-sm">Local: ${vaga.LOCAL}</p>
-                <p class="text-sm">Unidade: ${vaga.UNIDADE}</p>
                 
-                <div class="mt-3 flex flex-wrap gap-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <p class="text-sm text-gray-600 font-medium">Código:</p>
+                        <p class="text-gray-800">${vaga.CODIGO_VAGA}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 font-medium">Local:</p>
+                        <p class="text-gray-800">${vaga.LOCAL}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 font-medium">Unidade:</p>
+                        <p class="text-gray-800">${vaga.UNIDADE}</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex flex-wrap gap-3">
                     <a href="https://www.rhbrasil.com.br/portaldocandidato/view/ver-vagas.php?cod=${vaga.CODIGO_VAGA}" 
-                       target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
-                        <i class="fas fa-external-link-alt mr-1"></i> Ver vaga completa
+                       target="_blank" class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-md text-sm hover:from-blue-700 hover:to-indigo-800 transition-all duration-300 shadow flex items-center">
+                        <i class="fas fa-external-link-alt mr-2"></i> Ver vaga completa
                     </a>
                     <button onclick="toggleDescription(this, '${vaga.CODIGO_VAGA}', '${query.replace(/'/g, "\\'")}')" 
-                            class="px-3 py-1 bg-gray-200 text-gray-800 rounded-md text-sm hover:bg-gray-300">
-                        <i class="fas fa-eye mr-1"></i> Ver Descrição
+                            class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md text-sm hover:bg-gray-200 transition-colors duration-300 flex items-center">
+                        <i class="fas fa-eye mr-2"></i> Ver Descrição
                     </button>
                 </div>
                 
-                <div class="description-container hidden mt-3">
-                    <div class="description-content p-3 bg-white rounded border border-gray-300 overflow-auto"></div>
+                <div class="description-container hidden mt-5">
+                    <div class="description-content p-4 bg-gray-50 rounded-lg border border-gray-200 overflow-auto"></div>
                 </div>
             `;
             
